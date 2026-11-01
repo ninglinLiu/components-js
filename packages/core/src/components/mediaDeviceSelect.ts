@@ -29,10 +29,14 @@ export function setupDeviceSelector(
   // Merge room ActiveDeviceChanged events with local-track selections.
   // Preview / PreJoin paths call setDeviceId on a local track and never emit
   // RoomEvent.ActiveDeviceChanged, so the subject is the only signal there.
-  const activeDeviceObservable = merge(
-    createActiveDeviceObservable(room, kind),
-    activeDeviceSubject.pipe(filter((id): id is string => id !== undefined)),
-  );
+  // In room mode (no localTrack), use only the room event to avoid double emissions.
+  const roomActiveDevice$ = createActiveDeviceObservable(room, kind);
+  const activeDeviceObservable = localTrack
+    ? merge(
+        roomActiveDevice$,
+        activeDeviceSubject.pipe(filter((id): id is string => id !== undefined)),
+      )
+    : roomActiveDevice$;
 
   const setActiveMediaDevice = async (id: string, options: SetMediaDeviceOptions = {}) => {
     if (localTrack) {
